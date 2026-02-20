@@ -1,13 +1,14 @@
-FROM mysterysd/wzmlx:v3
+FROM mysterysd/wzmlx:heroku
 
 WORKDIR /usr/src/app
 RUN chmod 777 /usr/src/app
 
-RUN uv venv --system-site-packages
-
-COPY requirements.txt .
-RUN uv pip install --no-cache-dir -r requirements.txt
-
+# copy files
 COPY . .
+
+# force clean reinstall of pyrogram
+RUN pip3 uninstall -y pyrogram tgcrypto && \
+    pip3 install --no-cache-dir -U pyrogram tgcrypto && \
+    pip3 install --no-cache-dir -r requirements.txt
 
 CMD ["bash", "start.sh"]
