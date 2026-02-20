@@ -33,7 +33,7 @@ try:
         if not key.startswith("__")
     }
 except ModuleNotFoundError:
-    log_info("Config.py file is not Added! Checking ENVs..")
+    log_info("config.env file is not Added! Checking ENVs..")
     config_file = {}
 
 env_updates = {key: value.strip() if isinstance(value, str) else value for key, value in environ.items() if key in var_list}

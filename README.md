@@ -127,7 +127,7 @@ heroku login -i
 heroku create --region us --stack container APP_NAME
 ```
 
-**To Be Noted**: Copy the `BASE_URL` after the App is Created and Put the Value in `BASE_URL` when editing `config.py`
+**To Be Noted**: Copy the `BASE_URL` after the App is Created and Put the Value in `BASE_URL` when editing `config.env`
 
 **Notes:**
 - `--region eu` for Europe Server.
@@ -136,14 +136,14 @@ heroku create --region us --stack container APP_NAME
 - `--stack container` for setting stack to container for Dockerfile.
 - `--buildpack heroku/python` for using build slug for repo deploy and build.
 
-**Step 5 :** Now set all the Required Variables and Files into this Branch MAIN Repo like config.py, accounts.zip, token.pickle, All Private Files(optional)- 
-  > Only config.py Mabdatory with Only Mandatory Vars Only, After that Put all Private Files or Vars via Bot Settings `/bs`
+**Step 5 :** Now set all the Required Variables and Files into this Branch MAIN Repo like config.env, accounts.zip, token.pickle, All Private Files(optional)- 
+  > Only config.env Mabdatory with Only Mandatory Vars Only, After that Put all Private Files or Vars via Bot Settings `/bs`
 
 **To Edit Inside CLI (nano Editor):** _(Termux Users)_
 ```shell
-nano config.py
+nano config.env
 ```
-- **Sample config.py** _(Copy these and Paste in Editor and Fill Up)_
+- **Sample config.env** _(Copy these and Paste in Editor and Fill Up)_
   ```
   BOT_TOKEN = ""
   TELEGRAM_API = 0
