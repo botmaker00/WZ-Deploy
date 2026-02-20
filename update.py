@@ -1,72 +1,89 @@
-from base64 import b64decode
-from dotenv import load_dotenv, dotenv_values
-from logging import FileHandler, StreamHandler, basicConfig, error as log_error, info as log_info, INFO
+from logging import FileHandler, StreamHandler, INFO, basicConfig, error as log_error, info as log_info
 from os import path as ospath, environ, remove
-from pymongo import MongoClient
-from re import sub as resub
+from subprocess import run as srun, call as scall
+from pkg_resources import working_set
 from requests import get as rget
-from subprocess import run as srun
-from sys import exit
+from dotenv import load_dotenv, dotenv_values
+from pymongo import MongoClient
 
-
+# Clear logs
 if ospath.exists('log.txt'):
     with open('log.txt', 'r+') as f:
         f.truncate(0)
-
 if ospath.exists('rlog.txt'):
     remove('rlog.txt')
 
-basicConfig(format='%(asctime)s: [%(levelname)s: %(filename)s - %(lineno)d] ~ %(message)s',
+# Setup logging
+basicConfig(format="[%(asctime)s] [%(levelname)s] - %(message)s",
+            datefmt="%d-%b-%y %I:%M:%S %p",
             handlers=[FileHandler('log.txt'), StreamHandler()],
-            datefmt='%d-%b-%y %I:%M:%S %p',
             level=INFO)
 
-load_dotenv('config.env', override=False)
+# Load environment
+load_dotenv('config.env', override=True)
 
-if BOT_TOKEN := environ.get('BOT_TOKEN', ''):
-    bot_id = BOT_TOKEN.split(':', 1)[0]
-else:
-    log_error('BOT_TOKEN variable is missing! Exiting now')
+# Exit if placeholder check exists
+try:
+    if bool(environ.get('_____REMOVE_THIS_LINE_____')):
+        log_error('The README.md file there to be read! Exiting now!')
+        exit()
+except Exception:
+    pass
+
+# Required vars
+BOT_TOKEN = environ.get('BOT_TOKEN', '')
+if len(BOT_TOKEN) == 0:
+    log_error("BOT_TOKEN variable is missing! Exiting now")
     exit(1)
 
-if DATABASE_URL := environ.get('DATABASE_URL', ''):
-    if not DATABASE_URL.startswith('mongodb'):
-        try:
-            DATABASE_URL = b64decode(resub('ini|adalah|pesan|yang|sangat|rahasia', '', DATABASE_URL)).decode('utf-8')
-        except:
-            pass
-    try:
-        conn = MongoClient(DATABASE_URL)
-        db = conn.mltb
-        old_config = db.settings.deployConfig.find_one({'_id': bot_id})
-        config_dict = db.settings.config.find_one({'_id': bot_id})
-        if old_config:
-            del old_config['_id']
-        if (old_config and old_config == dict(dotenv_values('config.env')) or not old_config) and config_dict:
-            environ['UPSTREAM_REPO'] = config_dict.get('UPSTREAM_REPO')
-            environ['UPSTREAM_BRANCH'] = config_dict.get('UPSTREAM_BRANCH')
-            environ['UPDATE_EVERYTHING'] = str(config_dict.get('UPDATE_EVERYTHING'))
-        conn.close()
-    except Exception as e:
-        log_error('Database ERROR: %s', e)
+bot_id = BOT_TOKEN.split(':', 1)[0]
 
-if environ.get('UPDATE_EVERYTHING', 'False').lower() == 'true':
-    srun("pip3 list --outdated --format=freeze | grep -v '^\-e' | cut -d = -f 1 | xargs -n1 pip3 install -U", shell=True)
+DATABASE_URL = environ.get('DATABASE_URL', '')
+if len(DATABASE_URL) == 0:
+    DATABASE_URL = None
 
-if (UPSTREAM_REPO := environ.get('UPSTREAM_REPO')) and (UPSTREAM_BRANCH := environ.get('UPSTREAM_BRANCH')):
-    if 'gist.githubusercontent.com' in UPSTREAM_REPO:
-        UPSTREAM_REPO = rget(UPSTREAM_REPO).text.strip()
+# Load config from MongoDB
+if DATABASE_URL is not None:
+    conn = MongoClient(DATABASE_URL)
+    db = conn.wzmlx
+    old_config = db.settings.deployConfig.find_one({'_id': bot_id})
+    config_dict = db.settings.config.find_one({'_id': bot_id})
+    if old_config is not None:
+        del old_config['_id']
+    if (old_config is not None and old_config == dict(dotenv_values('config.env')) or old_config is None) \
+            and config_dict is not None:
+        environ['UPSTREAM_REPO'] = config_dict['UPSTREAM_REPO']
+        environ['UPSTREAM_BRANCH'] = config_dict['UPSTREAM_BRANCH']
+        environ['UPGRADE_PACKAGES'] = config_dict.get('UPDATE_PACKAGES', 'False')
+    conn.close()
+
+# Optional package upgrade
+UPGRADE_PACKAGES = environ.get('UPGRADE_PACKAGES', 'False') 
+if UPGRADE_PACKAGES.lower() == 'true':
+    packages = [dist.project_name for dist in working_set]
+    scall("uv pip install --system " + ' '.join(packages), shell=True)
+
+# Git pull
+UPSTREAM_REPO = environ.get('UPSTREAM_REPO', 'https://github.com/jatt-bot/PBX1-MLTB')
+if len(UPSTREAM_REPO) == 0:
+    UPSTREAM_REPO = None
+
+UPSTREAM_BRANCH = environ.get('UPSTREAM_BRANCH', 'hk_pbx1bots')
+
+if UPSTREAM_REPO is not None:
     if ospath.exists('.git'):
-        srun(['rm', '-rf', '.git'], check=True)
-    update = srun([f'git init -q \
-                     && git config --global user.email e.luckm4n@gmail.com \
-                     && git config --global user.name Honeyrs \
-                     && git add . \
-                     && git commit -sm update -q \
-                     && git remote add origin {UPSTREAM_REPO} \
-                     && git fetch origin -q \
-                     && git reset --hard origin/{UPSTREAM_BRANCH} -q'], shell=True, check=True)
+        srun(["rm", "-rf", ".git"])
+
+    update = srun([f"git init -q && git config --global user.email doc.adhikari@gmail.com "
+                   f"&& git config --global user.name weebzone && git add . "
+                   f"&& git commit -sm update -q && git remote add origin {UPSTREAM_REPO} "
+                   f"&& git fetch origin -q && git reset --hard origin/{UPSTREAM_BRANCH} -q"], shell=True)
+
+    repo = UPSTREAM_REPO.split('/')
+    UPSTREAM_REPO = f"https://github.com/{repo[-2]}/{repo[-1]}"
     if update.returncode == 0:
-        log_info(f'Successfully updated with latest commit from UPSTREAM_REPO ~ {UPSTREAM_BRANCH.upper()} Branch.')
+        log_info('Successfully updated with latest commits !!')
+        log_info(f'UPSTREAM_REPO: {UPSTREAM_REPO} | UPSTREAM_BRANCH: {UPSTREAM_BRANCH}')
     else:
-        log_error('Something went wrong while updating, check UPSTREAM_REPO if valid or not!')
+        log_error('Something went Wrong ! Retry or Ask Support !')
+        log_info(f'UPSTREAM_REPO: {UPSTREAM_REPO} | UPSTREAM_BRANCH: {UPSTREAM_BRANCH}')
